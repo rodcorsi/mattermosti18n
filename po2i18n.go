@@ -42,14 +42,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if len(template) == 0 {
-		fmt.Println("You need to set template file")
-		fmt.Println(usage)
-		os.Exit(1)
-	}
-
 	po := mattermosti18n.LoadPO(loadFile(filename))
-	json := mattermosti18n.LoadJson(loadFile(template))
+
+	var json *mattermosti18n.Translations
+	if len(template) > 0 {
+		json = mattermosti18n.LoadJson(loadFile(template))
+	}
 
 	if len(output) == 0 {
 		name := strings.TrimSuffix(filename, filepath.Ext(filename))

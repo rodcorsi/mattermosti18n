@@ -60,8 +60,14 @@ func TestToPO(t *testing.T) {
 		t.Error("Expect:", expect, "\nResult:", result)
 	}
 
+	m2 := LoadPO([]byte(po))
+	result = string(m2.ToPO(m, false))
+	if result != expect {
+		t.Error("Expect:", expect, "\nResult:", result)
+	}
+
 	m = LoadPO([]byte(po))
-	result = string(m.ToPO(m, false))
+	result = string(m.ToPO(nil, false))
 	if result != expect {
 		t.Error("Expect:", expect, "\nResult:", result)
 	}

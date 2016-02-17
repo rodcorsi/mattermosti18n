@@ -204,14 +204,23 @@ func LoadPO(data []byte) *Translations {
 func (source *Translations) toJsonWebStatic(template *Translations) []byte {
 	var buf bytes.Buffer
 	var k, t string
+	var order []string
 	next := false
+
+	hastemplate := template != nil && len((*template).Order) > 0
+
+	if hastemplate {
+		order = (*template).Order
+	} else {
+		order = (*source).Order
+	}
 
 	buf.WriteString("{\n")
 
-	for i := 0; i < len((*template).Order); i++ {
-		k = (*template).Order[i]
+	for i := 0; i < len(order); i++ {
+		k = order[i]
 		t = (*source).Data[k]
-		if len(t) == 0 {
+		if len(t) == 0 && hastemplate {
 			t = (*template).Data[k]
 		}
 
@@ -229,14 +238,23 @@ func (source *Translations) toJsonWebStatic(template *Translations) []byte {
 func (source *Translations) toJsonPlatform(template *Translations) []byte {
 	var buf bytes.Buffer
 	var k, t string
+	var order []string
 	next := false
+
+	hastemplate := template != nil && len((*template).Order) > 0
+
+	if hastemplate {
+		order = (*template).Order
+	} else {
+		order = (*source).Order
+	}
 
 	buf.WriteString("[\n")
 
-	for i := 0; i < len((*template).Order); i++ {
-		k = (*template).Order[i]
+	for i := 0; i < len(order); i++ {
+		k = order[i]
 		t = (*source).Data[k]
-		if len(t) == 0 {
+		if len(t) == 0 && hastemplate {
 			t = (*template).Data[k]
 		}
 
@@ -255,7 +273,7 @@ func (source *Translations) toJsonPlatform(template *Translations) []byte {
 }
 
 func (source *Translations) ToJson(template *Translations) []byte {
-	if (*template).Webstatic {
+	if template != nil && (*template).Webstatic {
 		return source.toJsonWebStatic(template)
 	}
 	return source.toJsonPlatform(template)
