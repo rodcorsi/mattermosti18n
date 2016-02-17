@@ -205,6 +205,10 @@ func (source *Translations) toJsonWebStatic(template *Translations) []byte {
 	for i := 0; i < len((*template).Order); i++ {
 		k = (*template).Order[i]
 		t = (*source).Data[k]
+		if len(t) == 0 {
+			t = (*template).Data[k]
+		}
+
 		if next {
 			buf.WriteString(",\n")
 		} else {
@@ -226,6 +230,10 @@ func (source *Translations) toJsonPlatform(template *Translations) []byte {
 	for i := 0; i < len((*template).Order); i++ {
 		k = (*template).Order[i]
 		t = (*source).Data[k]
+		if len(t) == 0 {
+			t = (*template).Data[k]
+		}
+
 		if next {
 			buf.WriteString(",\n")
 		} else {
