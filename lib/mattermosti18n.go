@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"strconv"
 )
 
 /*
@@ -33,6 +34,19 @@ type Translations struct {
 	Data      map[string]string
 }
 
+func unquote(text string) string {
+	s, err := strconv.Unquote(text)
+	if err != nil {
+		fmt.Println("Error on Unquote ", err)
+		return text
+	}
+	return s
+}
+
+func appendquoted(text1 string, text2 string) string {
+	return text1 + unquote(text2)
+}
+
 func parseWebStaticJson(data []byte, trans *Translations) error {
 	err := json.Unmarshal(data, &(*trans).Data)
 	if err != nil {
@@ -46,8 +60,8 @@ func parseWebStaticJson(data []byte, trans *Translations) error {
 	reg := regexp.MustCompile(`"\s*:\s*$`)
 
 	for i, w := range (*trans).Order {
-		ss := reg.ReplaceAllString(w, "")
-		(*trans).Order[i] = ss[1:]
+		ss := reg.ReplaceAllString(w, "\"")
+		(*trans).Order[i] = unquote(ss)
 	}
 
 	return nil
@@ -75,7 +89,7 @@ func parsePlatformJson(data []byte, trans *Translations) error {
 
 	for i, w := range (*trans).Order {
 		ss := reg.ReplaceAllString(w, "")
-		(*trans).Order[i] = ss[1 : len(ss)-1]
+		(*trans).Order[i] = unquote(ss)
 	}
 
 	return nil
@@ -96,15 +110,6 @@ func LoadJson(data []byte) *Translations {
 	return &parse
 }
 
-func fix_string(val string) string {
-	s := strings.Replace(val, "\\", "\\\\", -1)
-	s = strings.Replace(s, "\n", "\\n", -1)
-	s = strings.Replace(s, "\r", "\\r", -1)
-	s = strings.Replace(s, "\t", "\\t", -1)
-	s = strings.Replace(s, `"`, `\"`, -1)
-	return s
-}
-
 func (source *Translations) ToPO(target *Translations, template bool) []byte {
 	var buf bytes.Buffer
 	buf.WriteString(header)
@@ -116,31 +121,25 @@ func (source *Translations) ToPO(target *Translations, template bool) []byte {
 		k = (*source).Order[i]
 		t = (*source).Data[k]
 
-		fixed = fix_string(t)
-		buf.WriteString(fmt.Sprintln("#: ." + k))
-		buf.WriteString(fmt.Sprintln("msgctxt", `"`+k+`"`))
-		buf.WriteString(fmt.Sprintln("msgid", `"`+fixed+`"`)) //translation in source language (en)
+		if notarget {
+			fixed = strconv.Quote(t)
+		} else {
+			fixed = strconv.Quote((*target).Data[k])  //translation in source language (en)
+		}
+
+		buf.WriteString(fmt.Sprintln())
+		buf.WriteString(fmt.Sprintf("#: .%v\n", k))
+		buf.WriteString(fmt.Sprintln("msgctxt", strconv.Quote(k)))
+		buf.WriteString(fmt.Sprintln("msgid", fixed))
 
 		if template {
 			buf.WriteString(fmt.Sprintln("msgstr", `""`))
 		} else {
-			if notarget {
-				buf.WriteString(fmt.Sprintln("msgstr", `"`+fixed+`"`)) //translation in target language
-			} else {
-				buf.WriteString(fmt.Sprintln("msgstr", `"`+fix_string((*target).Data[k])+`"`)) //translation in target language
-			}
+			buf.WriteString(fmt.Sprintln("msgstr", fixed))
 		}
-		buf.WriteString(fmt.Sprintln())
 	}
 
 	return buf.Bytes()
-}
-
-func appendfix(text1 string, text2 string) string {
-	//return text1 + fmt.Sprintf("%v", strings.Trim(text2, "\""))
-	s := text2[1 : len(text2)-1]
-	//s = strings.Replace(s, "\\\\", "\\", -1)
-	return text1 + s
 }
 
 func LoadPO(data []byte) *Translations {
@@ -152,6 +151,7 @@ func LoadPO(data []byte) *Translations {
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	var parse Translations
 	parse.Data = make(map[string]string)
+	parse.Order = make([]string, 0)
 
 	for scanner.Scan() {
 		ln := strings.TrimSpace(scanner.Text())
@@ -164,7 +164,7 @@ func LoadPO(data []byte) *Translations {
 			if len(id) == 0 {
 				continue
 			}
-			translation = appendfix(translation, ln)
+			translation = appendquoted(translation, ln)
 			parse.Data[id] = translation
 			continue
 		}
@@ -176,13 +176,14 @@ func LoadPO(data []byte) *Translations {
 		}
 
 		if fields[0] == "msgctxt" {
-			id = fields[1][1 : len(fields[1])-1]
+			id = unquote(fields[1])
+			parse.Order = append(parse.Order, id)
 			translation = ""
 		} else if fields[0] == "msgstr" {
 			if len(id) == 0 {
 				continue
 			}
-			translation = appendfix(translation, fields[1])
+			translation = appendquoted(translation, fields[1])
 			parse.Data[id] = translation
 		}
 	}
@@ -214,7 +215,7 @@ func (source *Translations) toJsonWebStatic(template *Translations) []byte {
 		} else {
 			next = true
 		}
-		buf.WriteString(fmt.Sprintf(`%v"%v": "%v"`, indent, k, t))
+		buf.WriteString(fmt.Sprintf("%v%v: %v", indent, strconv.Quote(k), strconv.Quote(t)))
 	}
 	buf.WriteString("\n}")
 	return buf.Bytes()
@@ -240,8 +241,8 @@ func (source *Translations) toJsonPlatform(template *Translations) []byte {
 			next = true
 		}
 		buf.WriteString(fmt.Sprintf("%v{\n", indent))
-		buf.WriteString(fmt.Sprintf("%v\"id\": \"%v\",\n", indent2x, k))
-		buf.WriteString(fmt.Sprintf("%v\"translation\": \"%v\"\n", indent2x, t))
+		buf.WriteString(fmt.Sprintf("%v\"id\": %v,\n", indent2x, strconv.Quote(k)))
+		buf.WriteString(fmt.Sprintf("%v\"translation\": %v\n", indent2x, strconv.Quote(t)))
 		buf.WriteString(fmt.Sprintf("%v}", indent))
 	}
 	buf.WriteString("\n]")
@@ -275,4 +276,4 @@ const header = `# MATTERMOST.` + "\n" +
 	`"MIME-Version: 1.0\n"` + "\n" +
 	`"Content-Type: text/plain; charset=UTF-8\n"` + "\n" +
 	`"Content-Transfer-Encoding: 8bit\n"` + "\n" +
-	`"X-Generator: i18n2po\n"` + "\n\n"
+	`"X-Generator: i18n2po\n"` + "\n"
