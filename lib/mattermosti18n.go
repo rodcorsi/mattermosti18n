@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 /*
@@ -41,10 +41,6 @@ func unquote(text string) string {
 		return text
 	}
 	return s
-}
-
-func appendquoted(text1 string, text2 string) string {
-	return text1 + unquote(text2)
 }
 
 func parseWebStaticJson(data []byte, trans *Translations) error {
@@ -124,7 +120,7 @@ func (source *Translations) ToPO(target *Translations, template bool) []byte {
 		if notarget {
 			fixed = strconv.Quote(t)
 		} else {
-			fixed = strconv.Quote((*target).Data[k])  //translation in source language (en)
+			fixed = strconv.Quote((*target).Data[k]) //translation in source language (en)
 		}
 
 		buf.WriteString(fmt.Sprintln())
@@ -142,9 +138,23 @@ func (source *Translations) ToPO(target *Translations, template bool) []byte {
 	return buf.Bytes()
 }
 
+func readField(text string, scanner *bufio.Scanner) (string, bool) {
+	ret := unquote(text)
+
+	for scanner.Scan() {
+		ln := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(ln, "\"") {
+			ret = ret + unquote(ln)
+		} else {
+			return ret, true
+		}
+	}
+	return ret, false
+}
+
 func LoadPO(data []byte) *Translations {
 	var fields []string
-	var id, translation string
+	var id string
 
 	reg := regexp.MustCompile(" +")
 
@@ -153,19 +163,13 @@ func LoadPO(data []byte) *Translations {
 	parse.Data = make(map[string]string)
 	parse.Order = make([]string, 0)
 
-	for scanner.Scan() {
+	next := scanner.Scan()
+
+	for next {
 		ln := strings.TrimSpace(scanner.Text())
 
-		if len(ln) == 0 || strings.HasPrefix(ln, "#") {
-			continue
-		}
-
-		if strings.HasPrefix(ln, "\"") {
-			if len(id) == 0 {
-				continue
-			}
-			translation = appendquoted(translation, ln)
-			parse.Data[id] = translation
+		if len(ln) == 0 || strings.HasPrefix(ln, "#") || strings.HasPrefix(ln, "\"") {
+			next = scanner.Scan()
 			continue
 		}
 
@@ -175,17 +179,18 @@ func LoadPO(data []byte) *Translations {
 			os.Exit(1)
 		}
 
-		if fields[0] == "msgctxt" {
-			id = unquote(fields[1])
+		switch fields[0] {
+		case "msgctxt":
+			id, next = readField(fields[1], scanner)
 			parse.Order = append(parse.Order, id)
-			translation = ""
-		} else if fields[0] == "msgstr" {
-			if len(id) == 0 {
+			continue
+		case "msgstr":
+			if len(id) > 0 {
+				parse.Data[id], next = readField(fields[1], scanner)
 				continue
 			}
-			translation = appendquoted(translation, fields[1])
-			parse.Data[id] = translation
 		}
+		next = scanner.Scan()
 	}
 
 	if err := scanner.Err(); err != nil {
