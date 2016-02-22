@@ -112,13 +112,14 @@ func (source *Translations) ToPO(target *Translations, template bool) []byte {
 
 	notarget := target == nil || len((*target).Data) == 0
 
-	var fixed, k, t string
+	var fixed, k, t, id string
 	for i := 0; i < len((*source).Order); i = i + 1 {
 		k = (*source).Order[i]
 		t = (*source).Data[k]
 
+		id = strconv.Quote(t)
 		if notarget {
-			fixed = strconv.Quote(t)
+			fixed = id
 		} else {
 			fixed = strconv.Quote((*target).Data[k]) //translation in source language (en)
 		}
@@ -126,7 +127,7 @@ func (source *Translations) ToPO(target *Translations, template bool) []byte {
 		buf.WriteString(fmt.Sprintln())
 		buf.WriteString(fmt.Sprintf("#: .%v\n", k))
 		buf.WriteString(fmt.Sprintln("msgctxt", strconv.Quote(k)))
-		buf.WriteString(fmt.Sprintln("msgid", fixed))
+		buf.WriteString(fmt.Sprintln("msgid", id))
 
 		if template {
 			buf.WriteString(fmt.Sprintln("msgstr", `""`))

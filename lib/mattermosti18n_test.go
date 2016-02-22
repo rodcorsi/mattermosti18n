@@ -23,6 +23,14 @@ msgid "Team \n\"Edition\""
 msgstr "Team \n\"Edition\""
 `
 
+const potrans = header +
+	`
+#: .about.teamEdtion
+msgctxt "about.teamEdtion"
+msgid "Team \n\"Edition\""
+msgstr "Equipe \n\"Edição\""
+`
+
 func TestLoad(t *testing.T) {
 	expect := "Team \n\"Edition\""
 
@@ -93,5 +101,14 @@ func TestPOMultilines(t *testing.T) {
 	result := m.Data[key]
 	if result != expect {
 		t.Error("Expect:", expect, "\nResult:", result)
+	}
+}
+
+func TestPOTranslated(t *testing.T) {
+	m := LoadPO([]byte(po))
+	target := LoadPO([]byte(potrans))
+	result := string(m.ToPO(target, false))
+	if result != potrans {
+		t.Error("Expect:", potrans, "\nResult:", result)
 	}
 }
