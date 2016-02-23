@@ -57,7 +57,8 @@ mattermosti18n/bin/i18n2po -o new_platform.po platform.json <your-platform.json>
 ```
 
 3 - Go to the [Pootle](http://186.202.167.109/) server and sign-in
-	* Click in Mattermost -> (your language) -> webstatic.po
-	* Upload translations
-	* Choose your file new_web_static.po
-	* Repeat this process to _platform.po_
+
+* Click in Mattermost -> (your language) -> webstatic.po
+* Upload translations
+* Choose your file new_web_static.po
+* Repeat this process to _platform.po_
