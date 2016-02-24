@@ -10,15 +10,19 @@ import (
 	"strings"
 )
 
-var template bool
+var pot bool
 var output string
+var template string
 
 func init() {
-	flag.BoolVar(&template, "pot", false, "Define if the output is a template (POT)")
-	flag.BoolVar(&template, "p", false, "Define if the output is a template (POT)")
+	flag.BoolVar(&pot, "pot", false, "Define if the output is a template (POT)")
+	flag.BoolVar(&pot, "p", false, "Define if the output is a template (POT)")
 
 	flag.StringVar(&output, "output", "", "Define the output file name")
 	flag.StringVar(&output, "o", "", "Define the output file name")
+
+	flag.StringVar(&template, "template", "", "PO file that will be filled with Json translations")
+	flag.StringVar(&template, "t", "", "PO file that will be filled with Json translations")
 }
 
 func loadFile(filename string) []byte {
@@ -32,54 +36,52 @@ func loadFile(filename string) []byte {
 
 func main() {
 	var filename string
-	var targetfilename string
 
 	// Get input, if any...
 	flag.Parse()
 	if flag.NArg() == 1 {
 		filename = flag.Arg(0)
-
-	} else if flag.NArg() == 2 {
-		filename = flag.Arg(0)
-		targetfilename = flag.Arg(1)
-
 	} else {
 		fmt.Println(usage)
 		os.Exit(1)
 	}
 
-	var s, t *mattermosti18n.Translations
+	var json, po *mattermosti18n.Translations
 
-	s = mattermosti18n.LoadJson(loadFile(filename))
-	if len(targetfilename) > 0 {
-		t = mattermosti18n.LoadJson(loadFile(targetfilename))
+	json = mattermosti18n.LoadJson(loadFile(filename))
+	if len(template) > 0 {
+		po = mattermosti18n.LoadPO(loadFile(template))
 	}
 
 	if len(output) == 0 {
 		name := strings.TrimSuffix(filename, filepath.Ext(filename))
-		if template {
+		if pot {
 			output = name + "_new.pot"
 		} else {
 			output = name + "_new.po"
 		}
 	}
 
-	err := ioutil.WriteFile(output, s.ToPO(t, template), 0644)
+	var err error
+	if len(template) > 0 {
+		err = ioutil.WriteFile(output, po.ToPO(json, pot), 0644)
+	} else {
+		err = ioutil.WriteFile(output, json.ToPO(nil, pot), 0644)
+	}
+
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 }
 
-const usage = `i18n2po [Options] [source filename] [target filename]
+const usage = `i18n2po [Options] [target filename]
 Convert json translation to PO/POT files
 
-[source filename]
-    Json file in default language normaly en
-
 [target filename]
-    Translated json file
+    Translated Json file
 
 Options:
+    -t, -template  PO file that will be filled with Json translations
     -p, -pot       Define if the output is a template (POT)
-    -o, -output    Define the output file name`
+    -o, -output    Define the output file name (PO/POT)`

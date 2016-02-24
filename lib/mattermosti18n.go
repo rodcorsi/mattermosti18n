@@ -22,34 +22,43 @@ type Platform []struct {
 	Translation string `json:"translation"`
 }
 
-/*
-{
-	"id":"translation",
-	"id":"translation"
+type PO struct {
+	Localization string //#:
+	Original     string //msgid
+	Translation  string //msgstr
 }
-*/
+
 type Translations struct {
 	Webstatic bool
+	Header    string
 	Order     []string
-	Data      map[string]string
+	Data      map[string]PO //[msgctxt]
 }
 
 func unquote(text string) string {
 	s, err := strconv.Unquote(text)
 	if err != nil {
-		fmt.Println("Error on Unquote ", err)
 		return text
 	}
 	return s
 }
 
 func parseWebStaticJson(data []byte, trans *Translations) error {
-	err := json.Unmarshal(data, &(*trans).Data)
+	var parse map[string]string
+
+	err := json.Unmarshal(data, &parse)
 	if err != nil {
 		return err
 	}
 
 	(*trans).Webstatic = true
+	(*trans).Header = header
+
+	(*trans).Data = make(map[string]PO)
+	for k, t := range parse {
+		(*trans).Data[k] = PO{Localization: "." + k, Original: t, Translation: t}
+	}
+
 	//Create original order
 	//Get "xx":""
 	(*trans).Order = regexp.MustCompile(`"([^"\\\\]*|\\\\["\\\\bfnrt\/]|\\\\u[0-9a-f]{4}|\\")*"\s*:`).FindAllString(string(data), -1)
@@ -72,10 +81,11 @@ func parsePlatformJson(data []byte, trans *Translations) error {
 	}
 
 	(*trans).Webstatic = false
+	(*trans).Header = header
 
-	(*trans).Data = make(map[string]string)
+	(*trans).Data = make(map[string]PO)
 	for _, t := range parse {
-		(*trans).Data[t.Id] = t.Translation
+		(*trans).Data[t.Id] = PO{Localization: "." + t.Id, Original: t.Translation, Translation: t.Translation}
 	}
 
 	//Create original order
@@ -108,31 +118,31 @@ func LoadJson(data []byte) *Translations {
 
 func (source *Translations) ToPO(target *Translations, template bool) []byte {
 	var buf bytes.Buffer
-	buf.WriteString(header)
+	buf.WriteString((*source).Header)
 
-	notarget := target == nil || len((*target).Data) == 0
+	hastarget := target != nil && len((*target).Data) > 0
 
-	var fixed, k, t, id string
+	var k, t string
+	var po PO
 	for i := 0; i < len((*source).Order); i = i + 1 {
 		k = (*source).Order[i]
-		t = (*source).Data[k]
+		po = (*source).Data[k]
 
-		id = strconv.Quote(t)
-		if notarget {
-			fixed = id
+		if hastarget {
+			t = strconv.Quote((*target).Data[k].Translation) //translation in target language
 		} else {
-			fixed = strconv.Quote((*target).Data[k]) //translation in source language (en)
+			t = strconv.Quote(po.Translation) //translation in source language (en)
 		}
 
 		buf.WriteString(fmt.Sprintln())
-		buf.WriteString(fmt.Sprintf("#: .%v\n", k))
+		buf.WriteString(fmt.Sprintf("#: %v\n", po.Localization))
 		buf.WriteString(fmt.Sprintln("msgctxt", strconv.Quote(k)))
-		buf.WriteString(fmt.Sprintln("msgid", id))
+		buf.WriteString(fmt.Sprintln("msgid", strconv.Quote(po.Original)))
 
 		if template {
 			buf.WriteString(fmt.Sprintln("msgstr", `""`))
 		} else {
-			buf.WriteString(fmt.Sprintln("msgstr", fixed))
+			buf.WriteString(fmt.Sprintln("msgstr", t))
 		}
 	}
 
@@ -155,39 +165,56 @@ func readField(text string, scanner *bufio.Scanner) (string, bool) {
 
 func LoadPO(data []byte) *Translations {
 	var fields []string
-	var id string
+	var id, t, local, original string
 
 	reg := regexp.MustCompile(" +")
 
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	var parse Translations
-	parse.Data = make(map[string]string)
+	parse.Data = make(map[string]PO)
 	parse.Order = make([]string, 0)
 
+	//Read header
+	parse.Header = ""
 	next := scanner.Scan()
+	for next {
+		ln := strings.TrimSpace(scanner.Text())
+		if len(ln) == 0 {
+			break
+		}
+		parse.Header = parse.Header + ln + "\n"
+		next = scanner.Scan()
+	}
 
+	//Read translations
 	for next {
 		ln := strings.TrimSpace(scanner.Text())
 
-		if len(ln) == 0 || strings.HasPrefix(ln, "#") || strings.HasPrefix(ln, "\"") {
+		if len(ln) == 0 || strings.HasPrefix(ln, "\"") {
 			next = scanner.Scan()
 			continue
 		}
 
 		fields = reg.Split(ln, 2)
 		if len(fields) != 2 {
-			fmt.Println("Error on Split fields", fields)
-			os.Exit(1)
+			continue
 		}
 
 		switch fields[0] {
+		case "#:":
+			local, next = readField(fields[1], scanner)
+			continue
 		case "msgctxt":
 			id, next = readField(fields[1], scanner)
 			parse.Order = append(parse.Order, id)
 			continue
+		case "msgid":
+			original, next = readField(fields[1], scanner)
+			continue
 		case "msgstr":
 			if len(id) > 0 {
-				parse.Data[id], next = readField(fields[1], scanner)
+				t, next = readField(fields[1], scanner)
+				parse.Data[id] = PO{Localization: local, Original: original, Translation: t}
 				continue
 			}
 		}
@@ -220,9 +247,9 @@ func (source *Translations) toJsonWebStatic(template *Translations) []byte {
 
 	for i := 0; i < len(order); i++ {
 		k = order[i]
-		t = (*source).Data[k]
+		t = (*source).Data[k].Translation
 		if len(t) == 0 && hastemplate {
-			t = (*template).Data[k]
+			t = (*template).Data[k].Translation
 		}
 
 		if next {
@@ -254,9 +281,9 @@ func (source *Translations) toJsonPlatform(template *Translations) []byte {
 
 	for i := 0; i < len(order); i++ {
 		k = order[i]
-		t = (*source).Data[k]
+		t = (*source).Data[k].Translation
 		if len(t) == 0 && hastemplate {
-			t = (*template).Data[k]
+			t = (*template).Data[k].Translation
 		}
 
 		if next {

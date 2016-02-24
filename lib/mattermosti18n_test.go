@@ -35,19 +35,19 @@ func TestLoad(t *testing.T) {
 	expect := "Team \n\"Edition\""
 
 	m := LoadJson([]byte(webstatic))
-	result := (*m).Data["about.teamEdtion"]
+	result := (*m).Data["about.teamEdtion"].Translation
 	if result != expect {
 		t.Error("Expect:", expect, "\nResult:", result)
 	}
 
 	m = LoadJson([]byte(platform))
-	result = (*m).Data["about.teamEdtion"]
+	result = (*m).Data["about.teamEdtion"].Translation
 	if result != expect {
 		t.Error("Expect:", expect, "\nResult:", result)
 	}
 
 	m = LoadPO([]byte(po))
-	result = (*m).Data["about.teamEdtion"]
+	result = (*m).Data["about.teamEdtion"].Translation
 	if result != expect {
 		t.Error("Expect:", expect, "\nResult:", result)
 	}
@@ -98,7 +98,7 @@ func TestPOMultilines(t *testing.T) {
 
 	key := "about\n.team\"E\"dtion"
 	expect := "isso e um grande texto mesmos"
-	result := m.Data[key]
+	result := m.Data[key].Translation
 	if result != expect {
 		t.Error("Expect:", expect, "\nResult:", result)
 	}

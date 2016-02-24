@@ -27,7 +27,7 @@ wget "http://186.202.167.109/export/?path=/<CODE>/mattermost/web_static.po"
 wget "http://186.202.167.109/export/?path=/<CODE>/mattermost/platform.po"
 ```
 
-3 - After build Mattermosti18n you can use _po2i18n_ to convert the files
+3 - After build Mattermosti18n you can use **po2i18n** to convert the files
 ```
 mattermosti18n/bin/po2i18n -t web_static.json -o new_web_static.json web_static.po
 mattermosti18n/bin/po2i18n -t platform.json -o new_platform.json platform.po
@@ -44,16 +44,16 @@ mv new_platform.json <path_to_your_mattermost>platform/i18n/<CODE>.json
 
 If you have a translated json file and you can convert to PO and then upload in Pootle server.
 
-1 - Download the last version of platform/i18n/en.json and web/static/i18n/en.json
+1 - Download the PO's, change the **\<CODE\>** for the languange code (eg. es, pt_BR, de, zh_CN, etc)
 ```
-wget https://raw.githubusercontent.com/mattermost/platform/master/web/static/i18n/en.json -O web_static.json
-wget https://raw.githubusercontent.com/mattermost/platform/master/i18n/en.json -O platform.json
-````
+wget "http://186.202.167.109/export/?path=/<CODE>/mattermost/web_static.po"
+wget "http://186.202.167.109/export/?path=/<CODE>/mattermost/platform.po"
+```
 
-2 - After build Mattermosti18n you can use _i18n2po_ to convert the files
+2 - After build Mattermosti18n you can use **i18n2po** to convert the files
 ```
-mattermosti18n/bin/i18n2po -o new_web_static.po web_static.json <your-web_static.json>
-mattermosti18n/bin/i18n2po -o new_platform.po platform.json <your-platform.json>
+mattermosti18n/bin/i18n2po -o new_web_static.po -t web_static.po <your-web_static.json>
+mattermosti18n/bin/i18n2po -o new_platform.po -t platform.po <your-platform.json>
 ```
 
 3 - Go to the [Pootle](http://186.202.167.109/) server and sign-in
