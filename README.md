@@ -17,7 +17,7 @@ After you translate some phrases in Pootle server you can convert PO files to Js
 
 1 - Download the last version of platform/i18n/en.json and web/static/i18n/en.json
 ```
-wget https://raw.githubusercontent.com/mattermost/platform/master/web/static/i18n/en.json -O web_static.json
+wget https://raw.githubusercontent.com/mattermost/platform/master/webapp/i18n/en.json -O web_static.json
 wget https://raw.githubusercontent.com/mattermost/platform/master/i18n/en.json -O platform.json
 ````
 
@@ -35,7 +35,7 @@ mattermosti18n/bin/po2i18n -t platform.json -o new_platform.json platform.po
 
 4 - Now you can move the new json to your fork, again change the **\<CODE\>** for the languange code
 ```
-mv new_web_static.json <path_to_your_mattermost>platform/web/static/i18n/<CODE>.json
+mv new_web_static.json <path_to_your_mattermost>platform/webapp/i18n/<CODE>.json
 mv new_platform.json <path_to_your_mattermost>platform/i18n/<CODE>.json
 ```
 
