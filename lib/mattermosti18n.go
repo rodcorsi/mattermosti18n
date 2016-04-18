@@ -259,7 +259,7 @@ func (source *Translations) toJsonWebStatic(template *Translations) []byte {
 		}
 		buf.WriteString(fmt.Sprintf("%v%v: %v", indent, strconv.Quote(k), strconv.Quote(t)))
 	}
-	buf.WriteString("\n}")
+	buf.WriteString("\n}\n")
 	return buf.Bytes()
 }
 
@@ -296,7 +296,7 @@ func (source *Translations) toJsonPlatform(template *Translations) []byte {
 		buf.WriteString(fmt.Sprintf("%v\"translation\": %v\n", indent2x, strconv.Quote(t)))
 		buf.WriteString(fmt.Sprintf("%v}", indent))
 	}
-	buf.WriteString("\n]")
+	buf.WriteString("\n]\n")
 	return buf.Bytes()
 }
 
