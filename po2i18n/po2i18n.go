@@ -1,13 +1,14 @@
 package main
 
 import (
-	"./lib"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/rodrigocorsi2/mattermosti18n"
 )
 
 var template string
