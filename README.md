@@ -4,7 +4,7 @@ This tool was developed to convert Json translated files from the project [Matte
 
 # To build
 ```
-$ go get github.com/rodrigocorsi2/mattermosti18n
+$ go get github.com/rodrigocorsi2/mattermosti18n/...
 ```
 
 # Usage
