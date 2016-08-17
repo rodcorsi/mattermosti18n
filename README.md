@@ -1,6 +1,6 @@
 # Mattermosti18n
 
-This tool was developed to convert Json translated files from the project [Mattermost](https://github.com/mattermost/platform) to PO used in [Pootle](http://186.202.167.109/projects/) server.
+This tool was developed to convert Json translated files from the project [Mattermost](https://github.com/mattermost/platform) to PO used in [Pootle](http://translate.mattermost.com/projects/) server.
 
 # To build
 ```
@@ -21,8 +21,8 @@ $ wget https://raw.githubusercontent.com/mattermost/platform/master/i18n/en.json
 
 2 - Download the PO's, change the **\<LOCALE\>** for the languange code (eg. es, pt_BR, de, zh_CN, etc)
 ```
-$ wget "http://186.202.167.109/export/?path=/<LOCALE>/mattermost/web_static.po"
-$ wget "http://186.202.167.109/export/?path=/<LOCALE>/mattermost/platform.po"
+$ wget "http://translate.mattermost.com/export/?path=/<LOCALE>/mattermost/web_static.po" -O web_static.po
+$ wget "http://translate.mattermost.com/export/?path=/<LOCALE>/mattermost/platform.po" -O platform.po
 ```
 
 3 - After build Mattermosti18n you can use **po2i18n** to convert the files
@@ -44,8 +44,8 @@ If you have a translated json file and you can convert to PO and then upload in 
 
 1 - Download the PO's, change the **\<CODE\>** for the languange code (eg. es, pt_BR, de, zh_CN, etc)
 ```
-$ wget "http://186.202.167.109/export/?path=/<CODE>/mattermost/web_static.po"
-$ wget "http://186.202.167.109/export/?path=/<CODE>/mattermost/platform.po"
+$ wget "http://translate.mattermost.com/export/?path=/<CODE>/mattermost/web_static.po"
+$ wget "http://translate.mattermost.com/export/?path=/<CODE>/mattermost/platform.po"
 ```
 
 2 - After build Mattermosti18n you can use **i18n2po** to convert the files
@@ -54,7 +54,7 @@ $ i18n2po -o new_web_static.po -t web_static.po <your-web_static.json>
 $ i18n2po -o new_platform.po -t platform.po <your-platform.json>
 ```
 
-3 - Go to the [Pootle](http://186.202.167.109/) server and sign-in
+3 - Go to the [Pootle](http://translate.mattermost.com/) server and sign-in
 
 * Click in Mattermost -> (your language) -> webstatic.po
 * Upload translations
