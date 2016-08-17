@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -18,14 +19,16 @@ import (
 ]
 */
 type Platform []struct {
-	Id          string `json:"id"`
-	Translation string `json:"translation"`
+	Id          string      `json:"id"`
+	Translation interface{} `json:"translation"`
 }
 
 type PO struct {
-	Localization string //#:
-	Original     string //msgid
-	Translation  string //msgstr
+	Localization string    //#:
+	Original     string    //msgid
+	Plural       string    //msgid_plural
+	Translation  string    //msgstr
+	TransPlural  [2]string //msgstr[x]
 }
 
 type Translations struct {
@@ -85,7 +88,27 @@ func parsePlatformJson(data []byte, trans *Translations) error {
 
 	(*trans).Data = make(map[string]PO)
 	for _, t := range parse {
-		(*trans).Data[t.Id] = PO{Localization: "." + t.Id, Original: t.Translation, Translation: t.Translation}
+		v := reflect.ValueOf(t.Translation)
+		if v.Kind() == reflect.Map {
+			m := t.Translation.(map[string]interface{})
+			var tPlural [2]string
+			tPlural[0] = m["one"].(string)
+			tPlural[1] = m["other"].(string)
+			(*trans).Data[t.Id] = PO{
+				Localization: "." + t.Id,
+				Original:     tPlural[0],
+				Plural:       tPlural[1],
+				TransPlural:  tPlural,
+			}
+		} else {
+			translation := t.Translation.(string)
+			(*trans).Data[t.Id] = PO{
+				Localization: "." + t.Id,
+				Original:     translation,
+				Translation:  translation,
+			}
+		}
+
 	}
 
 	//Create original order
@@ -123,15 +146,29 @@ func (source *Translations) ToPO(target *Translations, template bool) []byte {
 	hastarget := target != nil && len((*target).Data) > 0
 
 	var k, t string
+	var tPlural [2]string
+
 	var po PO
 	for i := 0; i < len((*source).Order); i = i + 1 {
 		k = (*source).Order[i]
 		po = (*source).Data[k]
 
 		if hastarget {
-			t = strconv.Quote((*target).Data[k].Translation) //translation in target language
+			//translation in target language
+			if po.Plural != "" {
+				tPlural[0] = strconv.Quote((*target).Data[k].TransPlural[0])
+				tPlural[1] = strconv.Quote((*target).Data[k].TransPlural[1])
+			} else {
+				t = strconv.Quote((*target).Data[k].Translation)
+			}
 		} else {
-			t = strconv.Quote(po.Translation) //translation in source language (en)
+			//translation in source language (en)
+			if po.Plural != "" {
+				tPlural[0] = strconv.Quote(po.TransPlural[0])
+				tPlural[1] = strconv.Quote(po.TransPlural[1])
+			} else {
+				t = strconv.Quote(po.Translation)
+			}
 		}
 
 		buf.WriteString(fmt.Sprintln())
@@ -139,10 +176,21 @@ func (source *Translations) ToPO(target *Translations, template bool) []byte {
 		buf.WriteString(fmt.Sprintln("msgctxt", strconv.Quote(k)))
 		buf.WriteString(fmt.Sprintln("msgid", strconv.Quote(po.Original)))
 
-		if template {
-			buf.WriteString(fmt.Sprintln("msgstr", `""`))
+		if po.Plural != "" {
+			buf.WriteString(fmt.Sprintln("msgid_plural", strconv.Quote(po.Plural)))
+			if template {
+				buf.WriteString(fmt.Sprintln("msgstr[0]", `""`))
+				buf.WriteString(fmt.Sprintln("msgstr[1]", `""`))
+			} else {
+				buf.WriteString(fmt.Sprintln("msgstr[0]", tPlural[0]))
+				buf.WriteString(fmt.Sprintln("msgstr[1]", tPlural[1]))
+			}
 		} else {
-			buf.WriteString(fmt.Sprintln("msgstr", t))
+			if template {
+				buf.WriteString(fmt.Sprintln("msgstr", `""`))
+			} else {
+				buf.WriteString(fmt.Sprintln("msgstr", t))
+			}
 		}
 	}
 
@@ -165,7 +213,8 @@ func readField(text string, scanner *bufio.Scanner) (string, bool) {
 
 func LoadPO(data []byte) *Translations {
 	var fields []string
-	var id, t, local, original string
+	var id, t, local, original, plural string
+	var transPlural [2]string
 
 	reg := regexp.MustCompile(" +")
 
@@ -190,7 +239,13 @@ func LoadPO(data []byte) *Translations {
 	for next {
 		ln := strings.TrimSpace(scanner.Text())
 
-		if len(ln) == 0 || strings.HasPrefix(ln, "\"") {
+		if ln == "" && id != "" {
+			// end block
+			parse.Data[id] = PO{Localization: local, Original: original, Plural: plural, Translation: t, TransPlural: transPlural}
+			id = ""
+		}
+
+		if ln == "" || strings.HasPrefix(ln, "\"") {
 			next = scanner.Scan()
 			continue
 		}
@@ -211,12 +266,18 @@ func LoadPO(data []byte) *Translations {
 		case "msgid":
 			original, next = readField(fields[1], scanner)
 			continue
+		case "msgid_plural":
+			plural, next = readField(fields[1], scanner)
+			continue
 		case "msgstr":
-			if len(id) > 0 {
-				t, next = readField(fields[1], scanner)
-				parse.Data[id] = PO{Localization: local, Original: original, Translation: t}
-				continue
-			}
+			t, next = readField(fields[1], scanner)
+			continue
+		case "msgstr[0]":
+			transPlural[0], next = readField(fields[1], scanner)
+			continue
+		case "msgstr[1]":
+			transPlural[1], next = readField(fields[1], scanner)
+			continue
 		}
 		next = scanner.Scan()
 	}
@@ -224,6 +285,12 @@ func LoadPO(data []byte) *Translations {
 	if err := scanner.Err(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
+	}
+
+	if id != "" {
+		// end block
+		parse.Data[id] = PO{Localization: local, Original: original, Plural: plural, Translation: t, TransPlural: transPlural}
+		id = ""
 	}
 
 	return &parse
@@ -266,6 +333,7 @@ func (source *Translations) toJsonWebStatic(template *Translations) []byte {
 func (source *Translations) toJsonPlatform(template *Translations) []byte {
 	var buf bytes.Buffer
 	var k, t string
+	var tPlural [2]string
 	var order []string
 	next := false
 
@@ -281,9 +349,16 @@ func (source *Translations) toJsonPlatform(template *Translations) []byte {
 
 	for i := 0; i < len(order); i++ {
 		k = order[i]
-		t = (*source).Data[k].Translation
-		if len(t) == 0 && hastemplate {
-			t = (*template).Data[k].Translation
+		if (*source).Data[k].Plural != "" {
+			tPlural = (*source).Data[k].TransPlural
+			if len(tPlural[0]) == 0 && hastemplate {
+				tPlural = (*template).Data[k].TransPlural
+			}
+		} else {
+			t = (*source).Data[k].Translation
+			if len(t) == 0 && hastemplate {
+				t = (*template).Data[k].Translation
+			}
 		}
 
 		if next {
@@ -293,7 +368,16 @@ func (source *Translations) toJsonPlatform(template *Translations) []byte {
 		}
 		buf.WriteString(fmt.Sprintf("%v{\n", indent))
 		buf.WriteString(fmt.Sprintf("%v\"id\": %v,\n", indent2x, strconv.Quote(k)))
-		buf.WriteString(fmt.Sprintf("%v\"translation\": %v\n", indent2x, strconv.Quote(t)))
+
+		if (*source).Data[k].Plural != "" {
+			buf.WriteString(fmt.Sprintf("%v\"translation\": {\n", indent2x))
+			buf.WriteString(fmt.Sprintf("%v%v\"one\": %v,\n", indent2x, indent, strconv.Quote(tPlural[0])))
+			buf.WriteString(fmt.Sprintf("%v%v\"other\": %v\n", indent2x, indent, strconv.Quote(tPlural[1])))
+			buf.WriteString(fmt.Sprintf("%v}\n", indent2x))
+		} else {
+			buf.WriteString(fmt.Sprintf("%v\"translation\": %v\n", indent2x, strconv.Quote(t)))
+		}
+
 		buf.WriteString(fmt.Sprintf("%v}", indent))
 	}
 	buf.WriteString("\n]\n")
