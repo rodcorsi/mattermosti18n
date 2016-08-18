@@ -242,7 +242,8 @@ func LoadPO(data []byte) *Translations {
 		if ln == "" && id != "" {
 			// end block
 			parse.Data[id] = PO{Localization: local, Original: original, Plural: plural, Translation: t, TransPlural: transPlural}
-			id = ""
+			id, local, original, plural, t = "", "", "", "", ""
+			transPlural[0], transPlural[1] = "", ""
 		}
 
 		if ln == "" || strings.HasPrefix(ln, "\"") {
