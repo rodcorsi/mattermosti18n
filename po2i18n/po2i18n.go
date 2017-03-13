@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/rodrigocorsi2/mattermosti18n"
+	"github.com/rodcorsi/mattermosti18n"
 )
 
 var template string
