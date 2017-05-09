@@ -6,7 +6,7 @@ This tool was developed to convert JSON translated files from the project [Matte
 
 ### Automatic
 
-Either install a package made for your GNU/Linux distribution ([example](https://aur.archlinux.org/packages/mattermosti18n/)), or if you have `go` installed, execute the build and install process all-in-one with this oneliner:
+Either install a package made for your GNU/Linux distribution ([example for Arch Linux](https://aur.archlinux.org/packages/mattermosti18n-git/)), or if you have `go` installed, execute the build and install process all-in-one with this oneliner:
 ```
 $ go get github.com/rodcorsi/mattermosti18n/...
 ```
